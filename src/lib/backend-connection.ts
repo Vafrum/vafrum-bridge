@@ -189,9 +189,25 @@ export class MultiBackendManager {
     level: string;
     message: string;
   }): void {
-    const payload = { type: 'mqtt-diagnostic', ...event, timestamp: new Date().toISOString() };
+    if (!this.bridgeId) return;
+    const body = {
+      events: [
+        {
+          type: 'diagnostic.summary',
+          occurredAt: new Date().toISOString(),
+          printerId: event.printerId,
+          data: {
+            bridgeId: this.bridgeId,
+            level: event.level,
+            message: event.message,
+            serial: event.serial,
+            ...(event.ip !== undefined ? { ip: event.ip } : {}),
+          },
+        },
+      ],
+    };
     for (const rest of this.restClients.values()) {
-      void rest.sendEvent(payload);
+      void rest.sendEvent(body);
     }
   }
 
