@@ -24,7 +24,12 @@ export function SettingsPanel({ settings, backendStatus, onSave, onConnect, onDi
   const isConnected = backendStatus.dev || backendStatus.prod;
 
   const handleSave = () => {
-    onSave({ apiKey, devBackendUrl: devUrl, prodBackendUrl: prodUrl });
+    onSave({
+      apiKey,
+      devBackendUrl: devUrl,
+      prodBackendUrl: prodUrl,
+      bridgeId: settings.bridgeId,
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
   };
