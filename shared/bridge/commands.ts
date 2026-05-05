@@ -686,8 +686,33 @@ export function buildBambuCommandPayloads(
       };
     }
 
-    case 'move':
-      return { ok: false, error: 'move command not yet implemented' };
+    case 'move': {
+      const axis = typeof cmd.axis === 'string' ? cmd.axis.toUpperCase() : '';
+      if (axis !== 'X' && axis !== 'Y' && axis !== 'Z') {
+        return { ok: false, error: 'invalid_axis' };
+      }
+      const distRaw = commandI64(cmd, 'distance');
+      if (distRaw === undefined) return { ok: false, error: 'invalid_distance' };
+      const dist = Math.max(-50, Math.min(50, Number(cmd.distance)));
+      if (!Number.isFinite(dist) || dist === 0) {
+        return { ok: false, error: 'invalid_distance' };
+      }
+      const speedRaw = typeof cmd.speed === 'number' ? cmd.speed : 600;
+      const speed = Math.max(100, Math.min(3000, Math.round(speedRaw)));
+      // G91 relativ → G0 axisDist Fspeed → G90 absolut zurück
+      const distStr = dist.toFixed(2);
+      const gcode = `G91\nG0 ${axis}${distStr} F${speed}\nG90\n`;
+      return {
+        ok: true,
+        payloads: [{
+          print: {
+            sequence_id: '0',
+            command: 'gcode_line',
+            param: gcode,
+          },
+        }],
+      };
+    }
 
     case 'upgradeStart':
     case 'upgradeConfirm':
