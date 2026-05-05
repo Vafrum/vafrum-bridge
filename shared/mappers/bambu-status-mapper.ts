@@ -175,6 +175,7 @@ export function buildPrinterStatusFromBambuReport(
     ipcamResolution: ipcam.ipcamResolution,
     ipcamModeBits: ipcam.ipcamModeBits,
     ipcamTutkServer: ipcam.ipcamTutkServer,
+    cameraUrl: ipcam.rtspUrl,
 
     // §1.9 xcam
     xcamFirstLayerInspector: xcam.xcamFirstLayerInspector,
@@ -236,8 +237,8 @@ function parseLightsReport(
   } = {};
   for (const e of lr) {
     if (!e?.node || typeof e.mode !== 'string') continue;
-    if (e.mode !== 'on' && e.mode !== 'off') continue;
-    const value = e.mode === 'on';
+    if (e.mode !== 'on' && e.mode !== 'off' && e.mode !== 'flashing') continue;
+    const value = e.mode !== 'off';
     if (e.node === 'chamber_light') out.chamberLight = value;
     else if (e.node === 'chamber_light2') out.chamberLight2 = value;
     else if (e.node === 'work_light') out.workLight = value;

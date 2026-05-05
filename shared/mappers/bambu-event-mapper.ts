@@ -228,7 +228,9 @@ export interface BambuIpcamBlock {
   timelapse?: string;
   resolution?: string;
   mode_bit?: number;
+  mode_bits?: number;
   tutk_server?: string;
+  rtsp_url?: string;
 }
 
 export interface BambuXcamBlock {
@@ -872,6 +874,7 @@ export function mapIpcamStatus(block: BambuPrintBlock): {
   ipcamResolution?: string;
   ipcamModeBits?: number;
   ipcamTutkServer?: string;
+  rtspUrl?: string;
 } {
   const i = block.ipcam;
   if (!i) return {};
@@ -879,8 +882,9 @@ export function mapIpcamStatus(block: BambuPrintBlock): {
     ipcamRecord: i.ipcam_record === 'enable',
     ipcamTimelapse: i.timelapse === 'enable',
     ipcamResolution: i.resolution,
-    ipcamModeBits: i.mode_bit,
+    ipcamModeBits: i.mode_bits ?? i.mode_bit,
     ipcamTutkServer: i.tutk_server,
+    rtspUrl: i.rtsp_url,
   };
 }
 
