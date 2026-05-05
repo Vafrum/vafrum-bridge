@@ -212,6 +212,16 @@ async fn run_printer_task(
                         );
                     }
                     Ok(Event::Incoming(Packet::Publish(p))) => {
+                        let _ = app.emit(
+                            "printer-mqtt-diagnostic",
+                            serde_json::json!({
+                                "printerId": &printer_id,
+                                "serial": &serial,
+                                "ip": &ip,
+                                "level": "info",
+                                "message": format!("mqtt-message-received topic={} bytes={}", p.topic, p.payload.len())
+                            }),
+                        );
                         if let Ok(text) = std::str::from_utf8(&p.payload) {
                             if let Ok(json) = serde_json::from_str::<Value>(text) {
                                 let event_payload = serde_json::json!({

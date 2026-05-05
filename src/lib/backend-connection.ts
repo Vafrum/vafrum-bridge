@@ -171,9 +171,19 @@ export class MultiBackendManager {
   }
 
   broadcastStatus(status: PrinterStatus): void {
+    let count = 0;
     for (const conn of this.backends.values()) {
-      conn.emitStatus(status);
+      if (conn.isReady()) {
+        conn.emitStatus(status);
+        count += 1;
+      }
     }
+    this.broadcastDiagnostic({
+      printerId: status.printerId,
+      serial: status.serialNumber,
+      level: 'info',
+      message: `status-sent-to-${count}-backends`,
+    });
   }
 
   broadcastCommandResult(result: Omit<CommandResult, 'timestamp'>): void {
