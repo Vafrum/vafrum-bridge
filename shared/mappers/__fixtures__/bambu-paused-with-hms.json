@@ -1,0 +1,26 @@
+{
+  "print": {
+    "gcode_state": "PAUSE",
+    "subtask_name": "FRAME_clip_v2.gcode",
+    "mc_percent": 88,
+    "mc_remaining_time": 12,
+    "layer_num": 144,
+    "total_layer_num": 160,
+    "stg_cur": 6,
+    "print_error": 50348044,
+    "nozzle_temper": 218.0,
+    "nozzle_target_temper": 220,
+    "bed_temper": 60.0,
+    "bed_target_temper": 60,
+    "chamber_temper": 38.4,
+    "cooling_fan_speed": "0",
+    "big_fan1_speed": "0",
+    "big_fan2_speed": "0",
+    "wifi_signal": "-66dBm",
+    "hms": [
+      { "attr": 50331904, "code": 65543, "action": 0 },
+      { "attr": 117440512, "code": 196610, "action": 1 },
+      { "attr": 0, "code": 262145, "action": 0 }
+    ]
+  }
+}

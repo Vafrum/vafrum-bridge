@@ -1,0 +1,22 @@
+{
+  "_meta": {
+    "fixture_id": "FX5",
+    "model": "X2D",
+    "status": "skeleton",
+    "awaiting_hardware_trace": true,
+    "trace_backlog_ref": "docs/bridge/bambu-mqtt-trace-backlog.md §1, §2",
+    "spec_ref": "Function Map §8.2 (Modellklasse experimental)",
+    "k_decision_ref": "K1 — Hardware nicht verfügbar (decisions/bambu-mqtt-architektur-entscheidungen-2026-05-03)",
+    "created": "2026-05-03",
+    "purpose": "Komplette X2D-Telemetry. Aktuell kein Trace im Repo. Wird gefüllt sobald Hardware verfügbar."
+  },
+  "topic": "device/SERIAL_PLACEHOLDER/report",
+  "payload": {
+    "print": {
+      "command": "push_status",
+      "msg": 0,
+      "sequence_id": "SEQUENCE_PLACEHOLDER",
+      "_TODO_x2d_full_trace": "Komplette X2D-Payload muss von echter Hardware aufgenommen werden. Standardfelder (gcode_state, mc_percent, etc.) sind Bambu-generisch und werden behandelt. Modellspezifika unbekannt bis Trace verfügbar."
+    }
+  }
+}

@@ -1,0 +1,793 @@
+{
+  "$schema": "Vafrum Command Payload Test Vectors v1",
+  "_meta": {
+    "source": "apps/vafrum-bridge/src-tauri/src/lib.rs:1200-1568",
+    "extracted_at": "2026-05-04",
+    "purpose": "Reference vectors for TS-Builder + Rust-Match snapshot tests in Phase C",
+    "known_quirks": {
+      "sequence_id_strategies": {
+        "default": "0 — used for {print:{...}} commands ohne weitere Felder",
+        "led_payload": "0 + root user_id '1234567890' — alle ledctrl-Commands (chamber/work/heatbed light, ledFlashing)",
+        "gcode_payload": "2006 + root user_id '1234567890' — gcode_line, nozzleTemp, nozzle2Temp, bedTemp, partFan, auxFan, chamberFan"
+      },
+      "evaluation_pending": "Diese Inkonsistenzen sind möglicherweise Bambu-Studio-Konvention (firmware-erwartete Werte) oder Legacy-Bugs. Klärung erst nach Hardware-Trace gegen echten Drucker — bis dahin festschreiben wie Rust es tut."
+    },
+    "sequence_id_strategy": "see known_quirks.sequence_id_strategies",
+    "not_implemented_in_rust": [
+      "move (im PrinterCommand-Union deklariert, kein Rust-Builder-Branch)",
+      "upgradeStart / upgradeConfirm / upgradeConsistencyConfirm (explizit _blocked)",
+      "pushall / pushAll (außerhalb des Builders erzeugt — vafrum-mqtt-client/src/mqtt/commands.ts:49 und vafrum-core-api/src/gateway/cloud-mqtt.service.ts:501)"
+    ],
+    "topic_for_all_payloads": "device/<serial>/request"
+  },
+  "vectors": [
+    {
+      "id": "pause",
+      "input": { "type": "pause" },
+      "model": null,
+      "expected_payloads": [
+        { "print": { "sequence_id": "0", "command": "pause" } }
+      ]
+    },
+    {
+      "id": "resume",
+      "input": { "type": "resume" },
+      "model": null,
+      "expected_payloads": [
+        { "print": { "sequence_id": "0", "command": "resume" } }
+      ]
+    },
+    {
+      "id": "stop",
+      "input": { "type": "stop" },
+      "model": null,
+      "expected_payloads": [
+        { "print": { "sequence_id": "0", "command": "stop" } }
+      ]
+    },
+    {
+      "id": "speedLevel_1",
+      "input": { "type": "speedLevel", "level": 1 },
+      "model": null,
+      "expected_payloads": [
+        { "print": { "sequence_id": "0", "command": "print_speed", "param": "1" } }
+      ]
+    },
+    {
+      "id": "speedLevel_2",
+      "input": { "type": "speedLevel", "level": 2 },
+      "model": null,
+      "expected_payloads": [
+        { "print": { "sequence_id": "0", "command": "print_speed", "param": "2" } }
+      ]
+    },
+    {
+      "id": "speedLevel_3",
+      "input": { "type": "speedLevel", "level": 3 },
+      "model": null,
+      "expected_payloads": [
+        { "print": { "sequence_id": "0", "command": "print_speed", "param": "3" } }
+      ]
+    },
+    {
+      "id": "speedLevel_4",
+      "input": { "type": "speedLevel", "level": 4 },
+      "model": null,
+      "expected_payloads": [
+        { "print": { "sequence_id": "0", "command": "print_speed", "param": "4" } }
+      ]
+    },
+    {
+      "id": "speedLevel_clamp_99",
+      "notes": "level=99 wird auf 4 geclampt (clamp_i64 1..=4)",
+      "input": { "type": "speedLevel", "level": 99 },
+      "model": null,
+      "expected_payloads": [
+        { "print": { "sequence_id": "0", "command": "print_speed", "param": "4" } }
+      ]
+    },
+    {
+      "id": "calibration_option_1",
+      "input": { "type": "calibration", "option": 1 },
+      "model": null,
+      "expected_payloads": [
+        { "print": { "sequence_id": "0", "command": "calibration", "option": 1 } }
+      ]
+    },
+    {
+      "id": "calibration_option_15",
+      "input": { "type": "calibration", "option": 15 },
+      "model": null,
+      "expected_payloads": [
+        { "print": { "sequence_id": "0", "command": "calibration", "option": 15 } }
+      ]
+    },
+    {
+      "id": "calibration_type_bed_level",
+      "notes": "calibrationType-Alias 'bed_level' mappt auf option=2",
+      "input": { "type": "calibration", "calibrationType": "bed_level" },
+      "model": null,
+      "expected_payloads": [
+        { "print": { "sequence_id": "0", "command": "calibration", "option": 2 } }
+      ]
+    },
+    {
+      "id": "printOption_sound_enable",
+      "notes": "camel→snake mapping, nur eingehende Felder werden geschrieben",
+      "input": { "type": "printOption", "soundEnable": true },
+      "model": null,
+      "expected_payloads": [
+        { "print": { "sequence_id": "0", "command": "print_option", "sound_enable": true } }
+      ]
+    },
+    {
+      "id": "chamberLight_on",
+      "input": { "type": "chamberLight", "on": true },
+      "model": null,
+      "expected_payloads": [
+        {
+          "system": {
+            "sequence_id": "0",
+            "command": "ledctrl",
+            "led_node": "chamber_light",
+            "led_mode": "on",
+            "led_on_time": 500,
+            "led_off_time": 500,
+            "loop_times": 0,
+            "interval_time": 0
+          },
+          "user_id": "1234567890"
+        }
+      ]
+    },
+    {
+      "id": "chamberLight_off",
+      "input": { "type": "chamberLight", "on": false },
+      "model": null,
+      "expected_payloads": [
+        {
+          "system": {
+            "sequence_id": "0",
+            "command": "ledctrl",
+            "led_node": "chamber_light",
+            "led_mode": "off",
+            "led_on_time": 500,
+            "led_off_time": 500,
+            "loop_times": 0,
+            "interval_time": 0
+          },
+          "user_id": "1234567890"
+        }
+      ]
+    },
+    {
+      "id": "workLight_on_A1",
+      "notes": "A1 sendet zwei parallele LED-Payloads: chamber_light + work_light",
+      "input": { "type": "workLight", "on": true },
+      "model": "A1",
+      "expected_payloads": [
+        {
+          "system": {
+            "sequence_id": "0",
+            "command": "ledctrl",
+            "led_node": "chamber_light",
+            "led_mode": "on",
+            "led_on_time": 500,
+            "led_off_time": 500,
+            "loop_times": 0,
+            "interval_time": 0
+          },
+          "user_id": "1234567890"
+        },
+        {
+          "system": {
+            "sequence_id": "0",
+            "command": "ledctrl",
+            "led_node": "work_light",
+            "led_mode": "on",
+            "led_on_time": 500,
+            "led_off_time": 500,
+            "loop_times": 0,
+            "interval_time": 0
+          },
+          "user_id": "1234567890"
+        }
+      ]
+    },
+    {
+      "id": "workLight_on_H2",
+      "notes": "H2/X1 nutzt chamber_light2 statt work_light",
+      "input": { "type": "workLight", "on": true },
+      "model": "H2D",
+      "expected_payloads": [
+        {
+          "system": {
+            "sequence_id": "0",
+            "command": "ledctrl",
+            "led_node": "chamber_light2",
+            "led_mode": "on",
+            "led_on_time": 500,
+            "led_off_time": 500,
+            "loop_times": 0,
+            "interval_time": 0
+          },
+          "user_id": "1234567890"
+        }
+      ]
+    },
+    {
+      "id": "workLight_on_default",
+      "notes": "Default (P1S, P1P, etc.): work_light",
+      "input": { "type": "workLight", "on": true },
+      "model": "P1S",
+      "expected_payloads": [
+        {
+          "system": {
+            "sequence_id": "0",
+            "command": "ledctrl",
+            "led_node": "work_light",
+            "led_mode": "on",
+            "led_on_time": 500,
+            "led_off_time": 500,
+            "loop_times": 0,
+            "interval_time": 0
+          },
+          "user_id": "1234567890"
+        }
+      ]
+    },
+    {
+      "id": "workLight_off_default",
+      "input": { "type": "workLight", "on": false },
+      "model": "P1S",
+      "expected_payloads": [
+        {
+          "system": {
+            "sequence_id": "0",
+            "command": "ledctrl",
+            "led_node": "work_light",
+            "led_mode": "off",
+            "led_on_time": 500,
+            "led_off_time": 500,
+            "loop_times": 0,
+            "interval_time": 0
+          },
+          "user_id": "1234567890"
+        }
+      ]
+    },
+    {
+      "id": "heatbedLight_on",
+      "input": { "type": "heatbedLight", "on": true },
+      "model": null,
+      "expected_payloads": [
+        {
+          "system": {
+            "sequence_id": "0",
+            "command": "ledctrl",
+            "led_node": "heatbed_light",
+            "led_mode": "on",
+            "led_on_time": 500,
+            "led_off_time": 500,
+            "loop_times": 0,
+            "interval_time": 0
+          },
+          "user_id": "1234567890"
+        }
+      ]
+    },
+    {
+      "id": "heatbedLight_off",
+      "input": { "type": "heatbedLight", "on": false },
+      "model": null,
+      "expected_payloads": [
+        {
+          "system": {
+            "sequence_id": "0",
+            "command": "ledctrl",
+            "led_node": "heatbed_light",
+            "led_mode": "off",
+            "led_on_time": 500,
+            "led_off_time": 500,
+            "loop_times": 0,
+            "interval_time": 0
+          },
+          "user_id": "1234567890"
+        }
+      ]
+    },
+    {
+      "id": "partFan_speed_0",
+      "notes": "speed=0 → pwm=0; channel P1; gcode_payload nutzt sequence_id '2006' + user_id",
+      "input": { "type": "partFan", "speed": 0 },
+      "model": null,
+      "expected_payloads": [
+        {
+          "print": {
+            "sequence_id": "2006",
+            "command": "gcode_line",
+            "param": "M106 P1 S0\n"
+          },
+          "user_id": "1234567890"
+        }
+      ]
+    },
+    {
+      "id": "partFan_speed_clamp_128",
+      "notes": "speed=128 wird auf 100 geclampt → pwm=255 (100*2.55=255 exakt); channel P1",
+      "input": { "type": "partFan", "speed": 128 },
+      "model": null,
+      "expected_payloads": [
+        {
+          "print": {
+            "sequence_id": "2006",
+            "command": "gcode_line",
+            "param": "M106 P1 S255\n"
+          },
+          "user_id": "1234567890"
+        }
+      ]
+    },
+    {
+      "id": "auxFan_speed_100",
+      "notes": "channel P2",
+      "input": { "type": "auxFan", "speed": 100 },
+      "model": null,
+      "expected_payloads": [
+        {
+          "print": {
+            "sequence_id": "2006",
+            "command": "gcode_line",
+            "param": "M106 P2 S255\n"
+          },
+          "user_id": "1234567890"
+        }
+      ]
+    },
+    {
+      "id": "chamberFan_speed_100",
+      "notes": "channel P3 (default-arm im match)",
+      "input": { "type": "chamberFan", "speed": 100 },
+      "model": null,
+      "expected_payloads": [
+        {
+          "print": {
+            "sequence_id": "2006",
+            "command": "gcode_line",
+            "param": "M106 P3 S255\n"
+          },
+          "user_id": "1234567890"
+        }
+      ]
+    },
+    {
+      "id": "nozzleTemp_210",
+      "notes": "M104 S<temp>; gcode_payload-Konvention",
+      "input": { "type": "nozzleTemp", "temp": 210 },
+      "model": null,
+      "expected_payloads": [
+        {
+          "print": {
+            "sequence_id": "2006",
+            "command": "gcode_line",
+            "param": "M104 S210\n"
+          },
+          "user_id": "1234567890"
+        }
+      ]
+    },
+    {
+      "id": "nozzle2Temp_220",
+      "notes": "M104 T1 S<temp> für zweites Hotend",
+      "input": { "type": "nozzle2Temp", "temp": 220 },
+      "model": null,
+      "expected_payloads": [
+        {
+          "print": {
+            "sequence_id": "2006",
+            "command": "gcode_line",
+            "param": "M104 T1 S220\n"
+          },
+          "user_id": "1234567890"
+        }
+      ]
+    },
+    {
+      "id": "bedTemp_60",
+      "notes": "M140 S<temp>",
+      "input": { "type": "bedTemp", "temp": 60 },
+      "model": null,
+      "expected_payloads": [
+        {
+          "print": {
+            "sequence_id": "2006",
+            "command": "gcode_line",
+            "param": "M140 S60\n"
+          },
+          "user_id": "1234567890"
+        }
+      ]
+    },
+    {
+      "id": "gcode_valid_M104",
+      "notes": "single-line whitelisted gcode → normalized adds trailing \\n",
+      "input": { "type": "gcode", "gcode": "M104 S210" },
+      "model": null,
+      "expected_payloads": [
+        {
+          "print": {
+            "sequence_id": "2006",
+            "command": "gcode_line",
+            "param": "M104 S210\n"
+          },
+          "user_id": "1234567890"
+        }
+      ]
+    },
+    {
+      "id": "gcode_invalid_comment",
+      "notes": "Semikolon im Input wird von safe_gcode_line als unsafe gewertet → Result-Error",
+      "input": { "type": "gcode", "gcode": "; comment" },
+      "model": null,
+      "expected_error": "invalid_command"
+    },
+    {
+      "id": "gcodeFile_basic",
+      "input": { "type": "gcodeFile", "param": "test.gcode" },
+      "model": null,
+      "expected_payloads": [
+        {
+          "print": {
+            "sequence_id": "0",
+            "command": "gcode_file",
+            "param": "test.gcode"
+          }
+        }
+      ]
+    },
+    {
+      "id": "projectFile_minimal",
+      "notes": "Defaults: subtask_name='', file='', url='file:///sdcard', md5='', bed_type='auto', timelapse=false, bed_levelling=true, flow_cali=true, vibration_cali=true, layer_inspect=true, use_ams=false, ams_mapping=[-1,-1,-1,-1,0]",
+      "input": { "type": "projectFile", "param": "test.gcode.3mf" },
+      "model": null,
+      "expected_payloads": [
+        {
+          "print": {
+            "sequence_id": "0",
+            "command": "project_file",
+            "param": "test.gcode.3mf",
+            "project_id": "0",
+            "profile_id": "0",
+            "task_id": "0",
+            "subtask_id": "0",
+            "subtask_name": "",
+            "file": "",
+            "url": "file:///sdcard",
+            "md5": "",
+            "bed_type": "auto",
+            "timelapse": false,
+            "bed_levelling": true,
+            "flow_cali": true,
+            "vibration_cali": true,
+            "layer_inspect": true,
+            "use_ams": false,
+            "ams_mapping": [-1, -1, -1, -1, 0]
+          }
+        }
+      ]
+    },
+    {
+      "id": "unloadFilament",
+      "input": { "type": "unloadFilament" },
+      "model": null,
+      "expected_payloads": [
+        { "print": { "sequence_id": "0", "command": "unload_filament" } }
+      ]
+    },
+    {
+      "id": "loadFilament_tray_5",
+      "notes": "trayId=5 → ams_id = 5/4 = 1, slot_id = 5%4 = 1",
+      "input": { "type": "loadFilament", "trayId": 5 },
+      "model": null,
+      "expected_payloads": [
+        {
+          "print": {
+            "sequence_id": "0",
+            "command": "ams_change_filament",
+            "ams_id": 1,
+            "slot_id": 1,
+            "target": 5,
+            "curr_temp": 220,
+            "tar_temp": 220
+          }
+        }
+      ]
+    },
+    {
+      "id": "amsDrying_basic",
+      "notes": "mode default 1 wenn nicht gesetzt; cooling_temp=0, humidity=0, rotate_tray=false sind hartcodiert",
+      "input": { "type": "amsDrying", "amsId": 0, "temp": 50, "duration": 3600, "mode": 1 },
+      "model": null,
+      "expected_payloads": [
+        {
+          "print": {
+            "sequence_id": "0",
+            "command": "ams_filament_drying",
+            "ams_id": 0,
+            "temp": 50,
+            "cooling_temp": 0,
+            "duration": 3600,
+            "humidity": 0,
+            "mode": 1,
+            "rotate_tray": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "amsUserSetting_basic",
+      "input": { "type": "amsUserSetting", "amsId": 0, "startupReadOption": true, "trayReadOption": true },
+      "model": null,
+      "expected_payloads": [
+        {
+          "print": {
+            "sequence_id": "0",
+            "command": "ams_user_setting",
+            "ams_id": 0,
+            "startup_read_option": true,
+            "tray_read_option": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "amsFilamentSetting_basic",
+      "notes": "tray_color 6-char wird mit FF zu 8-char gepadded; tray_info_idx default 'GFL99'",
+      "input": {
+        "type": "amsFilamentSetting",
+        "amsId": 0,
+        "trayId": 0,
+        "trayColor": "FF0000",
+        "nozzleTempMin": 190,
+        "nozzleTempMax": 240,
+        "trayType": "PLA"
+      },
+      "model": null,
+      "expected_payloads": [
+        {
+          "print": {
+            "sequence_id": "0",
+            "command": "ams_filament_setting",
+            "ams_id": 0,
+            "tray_id": 0,
+            "tray_info_idx": "GFL99",
+            "tray_color": "FF0000FF",
+            "nozzle_temp_min": 190,
+            "nozzle_temp_max": 240,
+            "tray_type": "PLA"
+          }
+        }
+      ]
+    },
+    {
+      "id": "amsControl_resume",
+      "input": { "type": "amsControl", "param": "resume" },
+      "model": null,
+      "expected_payloads": [
+        { "print": { "sequence_id": "0", "command": "ams_control", "param": "resume" } }
+      ]
+    },
+    {
+      "id": "amsControl_reset",
+      "input": { "type": "amsControl", "param": "reset" },
+      "model": null,
+      "expected_payloads": [
+        { "print": { "sequence_id": "0", "command": "ams_control", "param": "reset" } }
+      ]
+    },
+    {
+      "id": "amsControl_pause",
+      "input": { "type": "amsControl", "param": "pause" },
+      "model": null,
+      "expected_payloads": [
+        { "print": { "sequence_id": "0", "command": "ams_control", "param": "pause" } }
+      ]
+    },
+    {
+      "id": "amsGetRfid_basic",
+      "input": { "type": "amsGetRfid", "amsId": 0, "slotId": 0 },
+      "model": null,
+      "expected_payloads": [
+        { "print": { "sequence_id": "0", "command": "ams_get_rfid", "ams_id": 0, "slot_id": 0 } }
+      ]
+    },
+    {
+      "id": "timelapse_enable",
+      "input": { "type": "timelapse", "enabled": true },
+      "model": null,
+      "expected_payloads": [
+        { "camera": { "sequence_id": "0", "command": "ipcam_timelapse", "control": "enable" } }
+      ]
+    },
+    {
+      "id": "timelapse_disable",
+      "input": { "type": "timelapse", "enabled": false },
+      "model": null,
+      "expected_payloads": [
+        { "camera": { "sequence_id": "0", "command": "ipcam_timelapse", "control": "disable" } }
+      ]
+    },
+    {
+      "id": "ipcamTimelapse_enable",
+      "notes": "ipcamTimelapse ist Alias zu timelapse — selbe Branch im Rust-match",
+      "input": { "type": "ipcamTimelapse", "control": "enable" },
+      "model": null,
+      "expected_payloads": [
+        { "camera": { "sequence_id": "0", "command": "ipcam_timelapse", "control": "enable" } }
+      ]
+    },
+    {
+      "id": "ipcamRecord_enable",
+      "input": { "type": "ipcamRecord", "enabled": true },
+      "model": null,
+      "expected_payloads": [
+        { "camera": { "sequence_id": "0", "command": "ipcam_record_set", "control": "enable" } }
+      ]
+    },
+    {
+      "id": "ipcamRecord_disable",
+      "input": { "type": "ipcamRecord", "enabled": false },
+      "model": null,
+      "expected_payloads": [
+        { "camera": { "sequence_id": "0", "command": "ipcam_record_set", "control": "disable" } }
+      ]
+    },
+    {
+      "id": "xcamControl_basic",
+      "input": {
+        "type": "xcamControl",
+        "moduleName": "first_layer_inspector",
+        "control": true,
+        "printHalt": true
+      },
+      "model": null,
+      "expected_payloads": [
+        {
+          "xcam": {
+            "sequence_id": "0",
+            "command": "xcam_control_set",
+            "module_name": "first_layer_inspector",
+            "control": true,
+            "print_halt": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "setAccessories_basic",
+      "input": { "type": "setAccessories", "nozzleDiameter": 0.4, "nozzleType": "hardened_steel" },
+      "model": null,
+      "expected_payloads": [
+        {
+          "system": {
+            "sequence_id": "0",
+            "command": "set_accessories",
+            "accessory_type": "nozzle",
+            "nozzle_diameter": 0.4,
+            "nozzle_type": "hardened_steel"
+          }
+        }
+      ]
+    },
+    {
+      "id": "getAccessories",
+      "input": { "type": "getAccessories" },
+      "model": null,
+      "expected_payloads": [
+        {
+          "system": {
+            "sequence_id": "0",
+            "command": "get_accessories",
+            "accessory_type": "none"
+          }
+        }
+      ]
+    },
+    {
+      "id": "getAccessCode",
+      "input": { "type": "getAccessCode" },
+      "model": null,
+      "expected_payloads": [
+        {
+          "system": {
+            "sequence_id": "0",
+            "command": "get_access_code"
+          }
+        }
+      ]
+    },
+    {
+      "id": "skipObjects_basic",
+      "input": { "type": "skipObjects", "objList": [1, 2, 3] },
+      "model": null,
+      "expected_payloads": [
+        {
+          "print": {
+            "sequence_id": "0",
+            "command": "skip_objects",
+            "obj_list": [1, 2, 3]
+          }
+        }
+      ]
+    },
+    {
+      "id": "buzzerCtrl_mode_1",
+      "notes": "reason ist hart leer-string",
+      "input": { "type": "buzzerCtrl", "mode": 1 },
+      "model": null,
+      "expected_payloads": [
+        {
+          "print": {
+            "sequence_id": "0",
+            "command": "buzzer_ctrl",
+            "mode": 1,
+            "reason": ""
+          }
+        }
+      ]
+    },
+    {
+      "id": "buzzerCtrl_clamp_11",
+      "notes": "mode=11 wird auf 10 geclampt (clamp_i64 0..=10)",
+      "input": { "type": "buzzerCtrl", "mode": 11 },
+      "model": null,
+      "expected_payloads": [
+        {
+          "print": {
+            "sequence_id": "0",
+            "command": "buzzer_ctrl",
+            "mode": 10,
+            "reason": ""
+          }
+        }
+      ]
+    },
+    {
+      "id": "setAirduct_basic",
+      "notes": "submode default -1 wenn nicht gesetzt",
+      "input": { "type": "setAirduct", "modeId": 2 },
+      "model": null,
+      "expected_payloads": [
+        {
+          "print": {
+            "sequence_id": "0",
+            "command": "set_airduct",
+            "modeId": 2,
+            "submode": -1
+          }
+        }
+      ]
+    },
+    {
+      "id": "ledFlashing_basic",
+      "notes": "Inline-Payload (nicht via led_payload-Helper); led_mode='flashing', loop_times=1, interval_time=0; kein Helper-Default sondern komplett separate Konstruktion",
+      "input": { "type": "ledFlashing", "ledNode": "chamber_light", "onTime": 500, "offTime": 500 },
+      "model": null,
+      "expected_payloads": [
+        {
+          "system": {
+            "sequence_id": "0",
+            "command": "ledctrl",
+            "led_node": "chamber_light",
+            "led_mode": "flashing",
+            "led_on_time": 500,
+            "led_off_time": 500,
+            "loop_times": 1,
+            "interval_time": 0
+          },
+          "user_id": "1234567890"
+        }
+      ]
+    }
+  ]
+}

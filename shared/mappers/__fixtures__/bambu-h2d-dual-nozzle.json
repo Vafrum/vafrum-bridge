@@ -1,0 +1,35 @@
+{
+  "_meta": {
+    "fixture_id": "FX1",
+    "model": "H2D",
+    "status": "skeleton",
+    "awaiting_hardware_trace": true,
+    "trace_backlog_ref": "docs/bridge/bambu-mqtt-trace-backlog.md §1, §2",
+    "spec_ref": "Function Map §1.3.6, §1.3.7, §1.3.8, §1.7.27",
+    "created": "2026-05-03",
+    "purpose": "Dual-Nozzle Temperatur-Decoding (Low/High Word), vir_slot[]-Array, device.bed.info, device.ctc.info"
+  },
+  "topic": "device/SERIAL_PLACEHOLDER/report",
+  "payload": {
+    "print": {
+      "command": "push_status",
+      "msg": 0,
+      "sequence_id": "SEQUENCE_PLACEHOLDER",
+      "gcode_state": "RUNNING",
+      "mc_percent": 42,
+      "mc_remaining_time": 120,
+      "subtask_name": "test_print.gcode.3mf",
+      "layer_num": 50,
+      "total_layer_num": 200,
+      "_TODO_h2d_specifics": {
+        "comment": "Folgende Felder müssen aus echtem H2D-Trace ergänzt werden",
+        "device_extruder_info": "TODO: device.extruder.info[*].temp Low/High Word Format laut Spec §1.3.6",
+        "device_bed_info_temp": "TODO: device.bed.info.temp laut Spec §1.3.7",
+        "device_ctc_info_temp": "TODO: device.ctc.info.temp laut Spec §1.3.8",
+        "vir_slot_array": "TODO: vir_slot[] mit id 254/253 laut Spec §1.7.27",
+        "lights_report_chamber_light2": "TODO: chamber_light2 (H2-Familie)",
+        "lights_report_heatbed_light": "TODO: heatbed_light (H2-Familie)"
+      }
+    }
+  }
+}

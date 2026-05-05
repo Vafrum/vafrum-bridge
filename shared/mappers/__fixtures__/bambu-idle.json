@@ -1,0 +1,27 @@
+{
+  "print": {
+    "command": "push_status",
+    "msg": 0,
+    "sequence_id": "1234",
+    "gcode_state": "IDLE",
+    "mc_percent": 0,
+    "mc_remaining_time": 0,
+    "stg_cur": 255,
+    "nozzle_temper": 24.5,
+    "nozzle_target_temper": 0,
+    "bed_temper": 23.1,
+    "bed_target_temper": 0,
+    "chamber_temper": 22.0,
+    "cooling_fan_speed": "0",
+    "big_fan1_speed": "0",
+    "big_fan2_speed": "0",
+    "spd_lvl": 2,
+    "spd_mag": 100,
+    "wifi_signal": "-53dBm",
+    "lights_report": [
+      { "node": "chamber_light", "mode": "on" },
+      { "node": "work_light", "mode": "off" }
+    ],
+    "online": { "ahb": true, "rfid": true }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "print": {
+    "command": "push_status",
+    "gcode_state": "RUNNING",
+    "subtask_name": "BENCHY_PLA_RED_v3.gcode",
+    "gcode_file": "fallback_should_not_win.gcode",
+    "mc_percent": 42,
+    "mc_remaining_time": 73,
+    "layer_num": 84,
+    "total_layer_num": 198,
+    "mc_print_stage": 0,
+    "stg_cur": 0,
+    "print_type": "local",
+    "nozzle_temper": 215.4,
+    "nozzle_target_temper": 220,
+    "bed_temper": 60.2,
+    "bed_target_temper": 60,
+    "chamber_temper": 32.1,
+    "cooling_fan_speed": "12",
+    "big_fan1_speed": "8",
+    "big_fan2_speed": "6",
+    "heatbreak_fan_speed": "15",
+    "spd_lvl": 3,
+    "spd_mag": 110,
+    "wifi_signal": -47,
+    "lights_report": [
+      { "node": "chamber_light", "mode": "on" }
+    ]
+  }
+}

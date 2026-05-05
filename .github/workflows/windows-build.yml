@@ -1,0 +1,40 @@
+name: Windows Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: TypeScript Check
+        run: npx tsc --noEmit
+
+      - name: Build Tauri (Windows NSIS)
+        run: npx tauri build --bundles nsis
+
+      - name: Upload .exe Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vafrum-bridge-windows
+          path: src-tauri/target/release/bundle/nsis/*.exe

@@ -1,0 +1,26 @@
+{
+  "_meta": {
+    "fixture_id": "FX6",
+    "model": "P2S",
+    "status": "skeleton",
+    "awaiting_hardware_trace": true,
+    "trace_backlog_ref": "docs/bridge/bambu-mqtt-trace-backlog.md §1",
+    "spec_ref": "Function Map §1.4.5 (P2S device.airduct.parts[id=160])",
+    "created": "2026-05-03",
+    "purpose": "P2S Secondary Aux Fan via device.airduct.parts[id=160].value"
+  },
+  "topic": "device/SERIAL_PLACEHOLDER/report",
+  "payload": {
+    "print": {
+      "command": "push_status",
+      "msg": 0,
+      "sequence_id": "SEQUENCE_PLACEHOLDER",
+      "gcode_state": "RUNNING",
+      "mc_percent": 30,
+      "_TODO_p2s_specifics": {
+        "comment": "Folgende Felder müssen aus echtem P2S-Trace ergänzt werden",
+        "device_airduct_parts_id_160": "TODO: device.airduct.parts[].value mit id=160 (Secondary Aux Fan) laut Spec §1.4.5"
+      }
+    }
+  }
+}

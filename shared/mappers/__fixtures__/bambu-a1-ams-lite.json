@@ -1,0 +1,25 @@
+{
+  "_meta": {
+    "fixture_id": "FX8",
+    "model": "A1 / A1 mini",
+    "status": "skeleton",
+    "awaiting_hardware_trace": true,
+    "trace_backlog_ref": "docs/bridge/bambu-mqtt-trace-backlog.md §3",
+    "spec_ref": "Function Map §1.7 (AMS Lite)",
+    "created": "2026-05-03",
+    "purpose": "AMS Lite — kleinere AMS-Variante für A1/A1 mini, abweichende Felder vs. AMS Standard"
+  },
+  "topic": "device/SERIAL_PLACEHOLDER/report",
+  "payload": {
+    "print": {
+      "command": "push_status",
+      "msg": 0,
+      "sequence_id": "SEQUENCE_PLACEHOLDER",
+      "gcode_state": "RUNNING",
+      "mc_percent": 15,
+      "ams": {
+        "_TODO_ams_lite": "TODO: AMS Lite-Struktur muss aus echtem A1/A1mini-Trace ergänzt werden. Unterscheidet sich von AMS Standard (FX7)."
+      }
+    }
+  }
+}
