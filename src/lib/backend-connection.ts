@@ -1,5 +1,10 @@
 import { io, Socket } from 'socket.io-client';
 import type { ApiPrinter, CommandMessage, CommandResult, PrinterStatus } from './types';
+import {
+  BridgeRestClient,
+  type BridgeRegisterPayload,
+  type BridgeHeartbeatPayload,
+} from './bridge-rest-client';
 
 export type BackendName = 'dev' | 'prod';
 
@@ -103,28 +108,66 @@ export class BackendConnection {
   }
 }
 
+const BRIDGE_APP_VERSION = '0.2.1';
+const HEARTBEAT_INTERVAL_MS = 60_000;
+
+export interface BridgeCounts {
+  configured: number;
+  connected: number;
+}
+
 export class MultiBackendManager {
   private backends: Map<BackendName, BackendConnection> = new Map();
+  private restClients: Map<BackendName, BridgeRestClient> = new Map();
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private bridgeId = '';
+  private getCounts: () => BridgeCounts = () => ({ configured: 0, connected: 0 });
 
   constructor(private events: BackendEvents) {}
 
-  configure(devUrl: string, prodUrl: string, apiKey: string): void {
+  configure(
+    devUrl: string,
+    prodUrl: string,
+    apiKey: string,
+    bridgeId: string,
+    getCounts: () => BridgeCounts,
+  ): void {
     this.disconnectAll();
+    this.bridgeId = bridgeId;
+    this.getCounts = getCounts;
     if (devUrl && apiKey) {
       this.backends.set('dev', new BackendConnection('dev', devUrl, apiKey, this.events));
+      this.restClients.set('dev', new BridgeRestClient('dev', devUrl, apiKey));
     }
     if (prodUrl && apiKey) {
       this.backends.set('prod', new BackendConnection('prod', prodUrl, apiKey, this.events));
+      this.restClients.set('prod', new BridgeRestClient('prod', prodUrl, apiKey));
     }
   }
 
-  connectAll(): void {
+  async connectAll(): Promise<void> {
+    if (this.bridgeId) {
+      const counts = this.getCounts();
+      const registerPayload: BridgeRegisterPayload = {
+        bridgeId: this.bridgeId,
+        appVersion: BRIDGE_APP_VERSION,
+        mode: 'live',
+        capabilities: ['bambu-mqtt', 'lan-only'],
+        configuredPrinterCount: counts.configured,
+      };
+      for (const rest of this.restClients.values()) {
+        await rest.register(registerPayload);
+      }
+    }
     for (const conn of this.backends.values()) conn.connect();
+    this.startHeartbeat();
   }
 
   disconnectAll(): void {
+    this.stopHeartbeat();
     for (const conn of this.backends.values()) conn.disconnect();
     this.backends.clear();
+    this.restClients.clear();
   }
 
   broadcastStatus(status: PrinterStatus): void {
@@ -144,5 +187,33 @@ export class MultiBackendManager {
       dev: this.backends.get('dev')?.isReady() ?? false,
       prod: this.backends.get('prod')?.isReady() ?? false,
     };
+  }
+
+  private startHeartbeat(): void {
+    if (this.heartbeatTimer) return;
+    const send = async () => {
+      if (!this.bridgeId) return;
+      const counts = this.getCounts();
+      const payload: BridgeHeartbeatPayload = {
+        bridgeId: this.bridgeId,
+        status: 'online',
+        configuredPrinterCount: counts.configured,
+        connectedPrinterCount: counts.connected,
+      };
+      for (const rest of this.restClients.values()) {
+        await rest.heartbeat(payload);
+      }
+    };
+    void send();
+    this.heartbeatTimer = setInterval(() => {
+      void send();
+    }, HEARTBEAT_INTERVAL_MS);
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
   }
 }

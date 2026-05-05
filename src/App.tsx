@@ -12,6 +12,7 @@ const DEFAULT_SETTINGS: Settings = {
   apiKey: '',
   devBackendUrl: '',
   prodBackendUrl: 'https://vafrum-core.de',
+  bridgeId: '',
 };
 
 function ensurePrinter(manager: PrinterManager, p: ApiPrinter): void {
@@ -101,8 +102,17 @@ function App() {
 
   const handleConnect = () => {
     if (!backendRef.current) return;
-    backendRef.current.configure(settings.devBackendUrl, settings.prodBackendUrl, settings.apiKey);
-    backendRef.current.connectAll();
+    backendRef.current.configure(
+      settings.devBackendUrl,
+      settings.prodBackendUrl,
+      settings.apiKey,
+      settings.bridgeId,
+      () => ({
+        configured: statusByPrinter.size,
+        connected: statusByPrinter.size,
+      }),
+    );
+    void backendRef.current.connectAll();
   };
 
   const handleDisconnect = () => {
