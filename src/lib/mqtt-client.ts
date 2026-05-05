@@ -14,8 +14,17 @@ export interface PrinterConnectionConfig {
   accessCode: string;
 }
 
+export interface DiagnosticEvent {
+  printerId: string;
+  serial: string;
+  ip?: string;
+  level: 'info' | 'warn' | 'error';
+  message: string;
+}
+
 export interface PrinterClientEvents {
   onStatus: (status: PrinterStatus) => void;
+  onDiagnostic?: (event: DiagnosticEvent) => void;
 }
 
 interface RustEvent {
@@ -28,6 +37,7 @@ interface RustEvent {
 export class PrinterEngine {
   private prevByPrinter = new Map<string, PrinterStatus>();
   private unlisten: UnlistenFn | null = null;
+  private unlistenDiag: UnlistenFn | null = null;
 
   constructor(private events: PrinterClientEvents) {}
 
@@ -36,12 +46,19 @@ export class PrinterEngine {
     this.unlisten = await listen<RustEvent>('printer-mqtt-message', (event) => {
       this.handleRust(event.payload);
     });
+    this.unlistenDiag = await listen<DiagnosticEvent>('printer-mqtt-diagnostic', (event) => {
+      this.events.onDiagnostic?.(event.payload);
+    });
   }
 
   async stop(): Promise<void> {
     if (this.unlisten) {
       this.unlisten();
       this.unlisten = null;
+    }
+    if (this.unlistenDiag) {
+      this.unlistenDiag();
+      this.unlistenDiag = null;
     }
   }
 

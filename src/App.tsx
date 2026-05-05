@@ -56,6 +56,9 @@ function App() {
         setStatusByPrinter((prev) => new Map(prev).set(status.printerId, status));
         backendRef.current?.broadcastStatus(status);
       },
+      onDiagnostic: (event) => {
+        backendRef.current?.broadcastDiagnostic(event);
+      },
     });
   }
 

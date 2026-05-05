@@ -142,12 +142,26 @@ async fn run_printer_task(
 
     let (client, mut eventloop) = AsyncClient::new(opts, 64);
 
+    let _ = app.emit(
+        "printer-mqtt-diagnostic",
+        serde_json::json!({
+            "printerId": &cfg.printer_id,
+            "serial": &cfg.serial,
+            "ip": &cfg.ip,
+            "level": "info",
+            "message": "mqtt-connecting"
+        }),
+    );
+
     let report_topic = format!("device/{}/report", cfg.serial);
     let req_topic = format!("device/{}/request", cfg.serial);
 
     if let Err(e) = client.subscribe(&report_topic, QoS::AtLeastOnce).await {
         eprintln!("[mqtt-engine:{}] subscribe error: {}", cfg.serial, e);
     }
+
+    // Drucker Zeit geben für ConnAck bevor erstes Pushall
+    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
 
     let pushall = serde_json::json!({
         "pushing": { "sequence_id": "0", "command": "pushall", "version": 1, "push_target": 1 },
@@ -160,6 +174,7 @@ async fn run_printer_task(
     let printer_id = cfg.printer_id.clone();
     let serial = cfg.serial.clone();
     let model = cfg.model.clone();
+    let ip = cfg.ip.clone();
 
     loop {
         tokio::select! {
@@ -181,6 +196,18 @@ async fn run_printer_task(
             }
             event = eventloop.poll() => {
                 match event {
+                    Ok(Event::Incoming(Packet::ConnAck(_))) => {
+                        let _ = app.emit(
+                            "printer-mqtt-diagnostic",
+                            serde_json::json!({
+                                "printerId": &printer_id,
+                                "serial": &serial,
+                                "ip": &ip,
+                                "level": "info",
+                                "message": "mqtt-connected"
+                            }),
+                        );
+                    }
                     Ok(Event::Incoming(Packet::Publish(p))) => {
                         if let Ok(text) = std::str::from_utf8(&p.payload) {
                             if let Ok(json) = serde_json::from_str::<Value>(text) {
@@ -196,6 +223,16 @@ async fn run_printer_task(
                     }
                     Ok(_) => {}
                     Err(e) => {
+                        let _ = app.emit(
+                            "printer-mqtt-diagnostic",
+                            serde_json::json!({
+                                "printerId": &printer_id,
+                                "serial": &serial,
+                                "ip": &ip,
+                                "level": "error",
+                                "message": format!("eventloop error: {}", e)
+                            }),
+                        );
                         eprintln!("[mqtt-engine:{}] eventloop error: {}", serial, e);
                         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                     }
