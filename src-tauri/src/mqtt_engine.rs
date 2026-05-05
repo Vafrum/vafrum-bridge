@@ -224,19 +224,25 @@ async fn run_printer_task(
                             }),
                         );
                         frame_count = frame_count.wrapping_add(1);
-                        if frame_count % 10 == 1 {
+                        if frame_count % 30 == 1 {
                             if let Ok(text) = std::str::from_utf8(&p.payload) {
-                                let snippet: String = text.chars().take(1500).collect();
-                                let _ = app.emit(
-                                    "printer-mqtt-diagnostic",
-                                    serde_json::json!({
-                                        "printerId": &printer_id,
-                                        "serial": &serial,
-                                        "ip": &ip,
-                                        "level": "debug",
-                                        "message": format!("frame-dump #{}: {}", frame_count, snippet)
-                                    }),
-                                );
+                                // Send full frame split into 3 chunks of 8000 chars each.
+                                let chars: Vec<char> = text.chars().collect();
+                                let total = chars.len();
+                                for (idx, chunk_start) in (0..total).step_by(8000).enumerate() {
+                                    let chunk_end = (chunk_start + 8000).min(total);
+                                    let chunk: String = chars[chunk_start..chunk_end].iter().collect();
+                                    let _ = app.emit(
+                                        "printer-mqtt-diagnostic",
+                                        serde_json::json!({
+                                            "printerId": &printer_id,
+                                            "serial": &serial,
+                                            "ip": &ip,
+                                            "level": "debug",
+                                            "message": format!("frame-dump #{} part {}/{}: {}", frame_count, idx + 1, (total + 7999) / 8000, chunk)
+                                        }),
+                                    );
+                                }
                             }
                         }
                         if let Ok(text) = std::str::from_utf8(&p.payload) {
