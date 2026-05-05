@@ -96,6 +96,13 @@ export class PrinterEngine {
     const raw = payload.raw;
     if (!raw || typeof raw !== 'object') return;
 
+    this.events.onDiagnostic?.({
+      printerId: payload.printerId,
+      serial: payload.serial,
+      level: 'info',
+      message: 'status-mapped-and-broadcasting',
+    });
+
     const merged = this.buildMerged(raw);
     if (!merged || Object.keys(merged).length === 0) return;
 
