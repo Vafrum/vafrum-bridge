@@ -898,19 +898,23 @@ export function mapUpgradeState(block: BambuPrintBlock): {
     upgradeStatus: u.status,
     upgradeProgress: progressNum !== undefined && Number.isFinite(progressNum) ? progressNum : undefined,
     upgradeNewVersionState: u.new_version_state,
-    upgradeNewVerList: u.new_ver_list?.map((v) => ({
-      name: v.name,
-      swVer: v.new_ver,
-      hwVer: v.cur_ver,
-      flag: v.flag,
-    })),
-    firmwareModules: u.module?.map((m) => ({
-      name: m.name,
-      swVer: m.sw_ver,
-      hwVer: m.hw_ver,
-      serialNumber: m.sn,
-      loaderVer: m.loader_ver,
-    })),
+    upgradeNewVerList: Array.isArray(u.new_ver_list)
+      ? u.new_ver_list.map((v) => ({
+          name: v.name,
+          swVer: v.new_ver,
+          hwVer: v.cur_ver,
+          flag: v.flag,
+        }))
+      : undefined,
+    firmwareModules: Array.isArray(u.module)
+      ? u.module.map((m) => ({
+          name: m.name,
+          swVer: m.sw_ver,
+          hwVer: m.hw_ver,
+          serialNumber: m.sn,
+          loaderVer: m.loader_ver,
+        }))
+      : undefined,
   };
 }
 
