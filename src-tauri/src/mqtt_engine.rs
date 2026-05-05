@@ -178,6 +178,7 @@ async fn run_printer_task(
     let serial = cfg.serial.clone();
     let model = cfg.model.clone();
     let ip = cfg.ip.clone();
+    let mut frame_count: u32 = 0;
 
     loop {
         tokio::select! {
@@ -222,6 +223,22 @@ async fn run_printer_task(
                                 "message": format!("mqtt-message-received topic={} bytes={}", p.topic, p.payload.len())
                             }),
                         );
+                        frame_count = frame_count.wrapping_add(1);
+                        if frame_count % 10 == 1 {
+                            if let Ok(text) = std::str::from_utf8(&p.payload) {
+                                let snippet: String = text.chars().take(1500).collect();
+                                let _ = app.emit(
+                                    "printer-mqtt-diagnostic",
+                                    serde_json::json!({
+                                        "printerId": &printer_id,
+                                        "serial": &serial,
+                                        "ip": &ip,
+                                        "level": "debug",
+                                        "message": format!("frame-dump #{}: {}", frame_count, snippet)
+                                    }),
+                                );
+                            }
+                        }
                         if let Ok(text) = std::str::from_utf8(&p.payload) {
                             if let Ok(json) = serde_json::from_str::<Value>(text) {
                                 let event_payload = serde_json::json!({
