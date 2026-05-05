@@ -18,7 +18,7 @@ export interface DiagnosticEvent {
   printerId: string;
   serial: string;
   ip?: string;
-  level: 'info' | 'warn' | 'error';
+  level: 'debug' | 'info' | 'warn' | 'error';
   message: string;
 }
 
