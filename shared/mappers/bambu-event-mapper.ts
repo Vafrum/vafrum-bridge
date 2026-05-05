@@ -930,27 +930,42 @@ export function mapH2Device(devicePayload: unknown): {
   nozzleTargetTemp?: number;
   nozzleTemp2?: number;
   nozzleTargetTemp2?: number;
+  chamberTemp?: number;
 } {
   if (!devicePayload || typeof devicePayload !== 'object') return {};
-  const d = devicePayload as { extruder?: { info?: unknown } };
-  const info = d.extruder?.info;
-  if (!info) return {};
-  const decoded = decodeExtruderInfo(info);
-  if (decoded.length === 0) return {};
+  const d = devicePayload as {
+    extruder?: { info?: unknown };
+    ctc?: { info?: { temp?: unknown } };
+  };
   const result: {
     nozzleTemp?: number;
     nozzleTargetTemp?: number;
     nozzleTemp2?: number;
     nozzleTargetTemp2?: number;
+    chamberTemp?: number;
   } = {};
-  if (decoded[0] && !decoded[0].isZero) {
-    result.nozzleTemp = decoded[0].current;
-    result.nozzleTargetTemp = decoded[0].target;
+
+  const info = d.extruder?.info;
+  if (info) {
+    const decoded = decodeExtruderInfo(info);
+    if (decoded[0] && !decoded[0].isZero) {
+      result.nozzleTemp = decoded[0].current;
+      result.nozzleTargetTemp = decoded[0].target;
+    }
+    if (decoded[1] && !decoded[1].isZero) {
+      result.nozzleTemp2 = decoded[1].current;
+      result.nozzleTargetTemp2 = decoded[1].target;
+    }
   }
-  if (decoded[1] && !decoded[1].isZero) {
-    result.nozzleTemp2 = decoded[1].current;
-    result.nozzleTargetTemp2 = decoded[1].target;
+
+  // H2D/H2C-Familie: Chamber-Temp in device.ctc.info.temp
+  // (statt im üblichen print.chamber_temper das hier nicht gesetzt wird).
+  // Spec: docs/bridge/bambu-mqtt-function-map.md §1.3
+  const ctcTemp = d.ctc?.info?.temp;
+  if (typeof ctcTemp === 'number' && Number.isFinite(ctcTemp)) {
+    result.chamberTemp = ctcTemp;
   }
+
   return result;
 }
 
