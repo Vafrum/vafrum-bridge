@@ -60,12 +60,14 @@ export function buildPrinterStatusFromBambuReport(
   let nozzleTargetTemp = numOrZero(block.nozzle_target_temper);
   let nozzleTemp2: number | undefined;
   let nozzleTargetTemp2: number | undefined;
+  let chamberTempH2: number | undefined;
   if (devicePayload) {
     const h2 = mapH2Device(devicePayload);
     if (h2.nozzleTemp !== undefined) nozzleTemp = h2.nozzleTemp;
     if (h2.nozzleTargetTemp !== undefined) nozzleTargetTemp = h2.nozzleTargetTemp;
     if (h2.nozzleTemp2 !== undefined) nozzleTemp2 = h2.nozzleTemp2;
     if (h2.nozzleTargetTemp2 !== undefined) nozzleTargetTemp2 = h2.nozzleTargetTemp2;
+    if (h2.chamberTemp !== undefined) chamberTempH2 = h2.chamberTemp;
   }
 
   const lights = parseLightsReport(block.lights_report);
@@ -110,7 +112,7 @@ export function buildPrinterStatusFromBambuReport(
     nozzleTargetTemp2,
     bedTemp: numOrZero(block.bed_temper),
     bedTargetTemp: numOrZero(block.bed_target_temper),
-    chamberTemp: numOrUndef(block.chamber_temper),
+    chamberTemp: chamberTempH2 ?? numOrUndef(block.chamber_temper),
 
     wifiSignal: parseIntOrUndef(block.wifi_signal),
 
