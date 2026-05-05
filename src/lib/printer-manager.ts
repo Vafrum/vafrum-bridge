@@ -1,54 +1,57 @@
-import { PrinterMqttClient } from './mqtt-client';
+import { PrinterEngine } from './mqtt-client';
 import type { PrinterConnectionConfig, PrinterClientEvents } from './mqtt-client';
 import type { PrinterCommand } from '../../shared/interfaces/printer-status';
 
 export class PrinterManager {
-  private clientsById = new Map<string, PrinterMqttClient>();
-  private clientsBySerial = new Map<string, PrinterMqttClient>();
-  private idBySerial = new Map<string, string>();
+  private engine: PrinterEngine;
+  private knownPrinters = new Map<string, PrinterConnectionConfig>();
 
-  constructor(private events: PrinterClientEvents) {}
-
-  addPrinter(config: PrinterConnectionConfig): void {
-    if (this.clientsById.has(config.printerId)) {
-      this.removePrinter(config.printerId);
-    }
-    const client = new PrinterMqttClient(config, this.events);
-    this.clientsById.set(config.printerId, client);
-    this.clientsBySerial.set(config.serialNumber, client);
-    this.idBySerial.set(config.serialNumber, config.printerId);
-    client.connect();
+  constructor(events: PrinterClientEvents) {
+    this.engine = new PrinterEngine(events);
   }
 
-  removePrinter(printerId: string): void {
-    const client = this.clientsById.get(printerId);
-    if (!client) return;
-    client.disconnect();
-    this.clientsById.delete(printerId);
-    for (const [serial, id] of this.idBySerial.entries()) {
-      if (id === printerId) {
-        this.clientsBySerial.delete(serial);
-        this.idBySerial.delete(serial);
+  async init(): Promise<void> {
+    await this.engine.start();
+  }
+
+  async addPrinter(config: PrinterConnectionConfig): Promise<void> {
+    if (this.knownPrinters.has(config.printerId)) {
+      await this.removePrinter(config.printerId);
+    }
+    this.knownPrinters.set(config.printerId, config);
+    await this.engine.addPrinter(config);
+  }
+
+  async removePrinter(printerId: string): Promise<void> {
+    await this.engine.removePrinter(printerId);
+    this.knownPrinters.delete(printerId);
+  }
+
+  async removeBySerial(serialNumber: string): Promise<void> {
+    for (const [id, cfg] of this.knownPrinters.entries()) {
+      if (cfg.serialNumber === serialNumber) {
+        await this.removePrinter(id);
       }
     }
   }
 
-  removeBySerial(serialNumber: string): void {
-    const id = this.idBySerial.get(serialNumber);
-    if (id) this.removePrinter(id);
+  async removeAll(): Promise<void> {
+    for (const id of [...this.knownPrinters.keys()]) {
+      await this.removePrinter(id);
+    }
   }
 
-  removeAll(): void {
-    for (const id of [...this.clientsById.keys()]) this.removePrinter(id);
-  }
-
-  sendCommand(printerId: string, command: PrinterCommand): boolean {
-    const client = this.clientsById.get(printerId);
-    if (!client) return false;
-    return client.sendCommand(command);
+  async sendCommand(printerId: string, command: PrinterCommand): Promise<boolean> {
+    const cfg = this.knownPrinters.get(printerId);
+    if (!cfg) return false;
+    return this.engine.sendCommand(printerId, cfg.model, command);
   }
 
   has(printerId: string): boolean {
-    return this.clientsById.has(printerId);
+    return this.knownPrinters.has(printerId);
+  }
+
+  getKnown(): PrinterConnectionConfig[] {
+    return [...this.knownPrinters.values()];
   }
 }

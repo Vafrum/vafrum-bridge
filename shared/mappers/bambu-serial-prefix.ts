@@ -70,10 +70,10 @@ const PREFIX_TABLE: PrefixEntry[] = [
   { prefix: '039', model: 'A1 mini', verified: false, source: 'community' },
   { prefix: '094', model: 'A1', verified: false, source: 'community' },
 
-  // H2-Familie (TODO: Präfixe verifizieren mit echter Hardware)
-  // { prefix: '???', model: 'H2D', verified: false, source: 'TODO' },
+  // H2-Familie (Hardware-verifiziert 2026-05-05 via Vafrum-Setup)
+  { prefix: '0948', model: 'H2D', verified: true, source: 'real-hardware-2026-05-05' },
+  { prefix: '31B8', model: 'H2C', verified: true, source: 'real-hardware-2026-05-05' },
   // { prefix: '???', model: 'H2D Pro', verified: false, source: 'TODO' },
-  // { prefix: '???', model: 'H2C', verified: false, source: 'TODO' },
   // { prefix: '???', model: 'H2S', verified: false, source: 'TODO' },
 
   // X2-Familie (K1: Hardware nicht verfügbar)

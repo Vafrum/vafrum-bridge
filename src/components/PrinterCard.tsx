@@ -1,19 +1,35 @@
 import { useState } from 'react';
 import type { PrinterStatus } from '../../shared/interfaces/printer-status';
+import type { KnownPrinter } from '../App';
 
 interface Props {
-  status: PrinterStatus;
+  known: KnownPrinter;
+  status: PrinterStatus | null;
 }
 
-export function PrinterCard({ status }: Props) {
+export function PrinterCard({ known, status }: Props) {
   const [open, setOpen] = useState(false);
+
+  if (!status) {
+    return (
+      <div className="printer-card">
+        <header>
+          <strong>{known.serialNumber}</strong>
+          <span className="model">{known.model ?? '?'}</span>
+          <span className="state idle">Verbinde…</span>
+          <span className="off">○ {known.ipAddress}</span>
+        </header>
+      </div>
+    );
+  }
+
   const stateClass =
     status.gcodeState === 'RUNNING' ? 'running'
       : status.gcodeState === 'PAUSE' ? 'paused'
       : status.gcodeState === 'FAILED' ? 'failed'
       : 'idle';
 
-  const modelLabel = status.modelFamily ?? status.modelClass ?? '?';
+  const modelLabel = known.model ?? status.modelFamily ?? status.modelClass ?? '?';
 
   return (
     <div className="printer-card">
