@@ -103,46 +103,59 @@ export class PrinterEngine {
       message: 'status-mapped-and-broadcasting',
     });
 
-    const merged = this.buildMerged(raw);
-    if (!merged || Object.keys(merged).length === 0) return;
+    try {
+      const merged = this.buildMerged(raw);
+      if (!merged || Object.keys(merged).length === 0) return;
 
-    const prev = this.prevByPrinter.get(payload.printerId);
-    const devicePayload = raw?.print?.device ?? raw?.device;
+      const prev = this.prevByPrinter.get(payload.printerId);
+      const devicePayload = raw?.print?.device ?? raw?.device;
 
-    let status = buildPrinterStatusFromBambuReport(
-      payload.serial,
-      merged,
-      devicePayload,
-      { model: payload.model, printerId: payload.printerId },
-    );
+      let status = buildPrinterStatusFromBambuReport(
+        payload.serial,
+        merged,
+        devicePayload,
+        { model: payload.model, printerId: payload.printerId },
+      );
 
-    if (prev) {
-      if (merged.nozzle_temper === undefined) status.nozzleTemp = prev.nozzleTemp;
-      if (merged.nozzle_target_temper === undefined) status.nozzleTargetTemp = prev.nozzleTargetTemp;
-      if (merged.bed_temper === undefined) status.bedTemp = prev.bedTemp;
-      if (merged.bed_target_temper === undefined) status.bedTargetTemp = prev.bedTargetTemp;
-      if (merged.mc_percent === undefined) status.printProgress = prev.printProgress;
-      if (merged.mc_remaining_time === undefined) status.remainingTime = prev.remainingTime;
-      if (merged.gcode_state === undefined) status.gcodeState = prev.gcodeState;
-      if (merged.chamber_temper === undefined) status.chamberTemp = prev.chamberTemp;
+      if (prev) {
+        if (merged.nozzle_temper === undefined) status.nozzleTemp = prev.nozzleTemp;
+        if (merged.nozzle_target_temper === undefined) status.nozzleTargetTemp = prev.nozzleTargetTemp;
+        if (merged.bed_temper === undefined) status.bedTemp = prev.bedTemp;
+        if (merged.bed_target_temper === undefined) status.bedTargetTemp = prev.bedTargetTemp;
+        if (merged.mc_percent === undefined) status.printProgress = prev.printProgress;
+        if (merged.mc_remaining_time === undefined) status.remainingTime = prev.remainingTime;
+        if (merged.gcode_state === undefined) status.gcodeState = prev.gcodeState;
+        if (merged.chamber_temper === undefined) status.chamberTemp = prev.chamberTemp;
+      }
+
+      if (status.hms && status.hms.length > 0) {
+        const enriched = mapHmsArray(status.hms.map((e) => ({ attr: e.attr, code: e.code })));
+        status.hms = enriched.map<HmsEntry>((e) => ({
+          attr: e.attr,
+          code: e.code,
+          formattedCode: e.formattedCode,
+          module: e.module,
+          severityLevel: e.severityLevel,
+          ...(e.description !== undefined ? { description: e.description } : {}),
+          wikiUrl: e.wikiUrl,
+        }));
+      }
+
+      status.lastSeen = new Date();
+      this.prevByPrinter.set(payload.printerId, status);
+      this.events.onStatus(status);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      const stackLine = err instanceof Error && err.stack
+        ? err.stack.split('\n')[1]?.trim() ?? ''
+        : '';
+      this.events.onDiagnostic?.({
+        printerId: payload.printerId,
+        serial: payload.serial,
+        level: 'error',
+        message: `mapper-crash: ${errorMsg} | ${stackLine}`.slice(0, 400),
+      });
     }
-
-    if (status.hms && status.hms.length > 0) {
-      const enriched = mapHmsArray(status.hms.map((e) => ({ attr: e.attr, code: e.code })));
-      status.hms = enriched.map<HmsEntry>((e) => ({
-        attr: e.attr,
-        code: e.code,
-        formattedCode: e.formattedCode,
-        module: e.module,
-        severityLevel: e.severityLevel,
-        ...(e.description !== undefined ? { description: e.description } : {}),
-        wikiUrl: e.wikiUrl,
-      }));
-    }
-
-    status.lastSeen = new Date();
-    this.prevByPrinter.set(payload.printerId, status);
-    this.events.onStatus(status);
   }
 
   private buildMerged(raw: any): BambuPrintBlock {
