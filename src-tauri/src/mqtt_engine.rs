@@ -137,6 +137,9 @@ async fn run_printer_task(
     );
     opts.set_credentials("bblp", &cfg.lan_password);
     opts.set_keep_alive(std::time::Duration::from_secs(30));
+    // Bambu-Push-Status können >20 KB werden (AMS + HMS + Cam-Felder).
+    // rumqttc-Default ist 10 KB → Endlos-Reconnect bei größeren Frames.
+    opts.set_max_packet_size(256_000, 256_000);
 
     opts.set_transport(Transport::Tls(make_insecure_tls()));
 
