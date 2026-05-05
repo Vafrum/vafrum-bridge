@@ -120,6 +120,9 @@ function App() {
         });
       },
     });
+    backendRef.current.setDiagnosticHandler((event) => {
+      backendRef.current?.broadcastDiagnostic(event);
+    });
   }
 
   useEffect(() => {

@@ -116,14 +116,27 @@ export interface BridgeCounts {
   connected: number;
 }
 
+export interface DiagnosticPayload {
+  printerId: string;
+  serial: string;
+  ip?: string;
+  level: string;
+  message: string;
+}
+
 export class MultiBackendManager {
   private backends: Map<BackendName, BackendConnection> = new Map();
   private restClients: Map<BackendName, BridgeRestClient> = new Map();
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private bridgeId = '';
   private getCounts: () => BridgeCounts = () => ({ configured: 0, connected: 0 });
+  private diagnosticHandler: ((event: DiagnosticPayload) => void) | null = null;
 
   constructor(private events: BackendEvents) {}
+
+  setDiagnosticHandler(handler: (event: DiagnosticPayload) => void): void {
+    this.diagnosticHandler = handler;
+  }
 
   configure(
     devUrl: string,
@@ -178,7 +191,7 @@ export class MultiBackendManager {
         count += 1;
       }
     }
-    this.broadcastDiagnostic({
+    this.diagnosticHandler?.({
       printerId: status.printerId,
       serial: status.serialNumber,
       level: 'info',
