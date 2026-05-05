@@ -182,6 +182,19 @@ export class MultiBackendManager {
     }
   }
 
+  broadcastDiagnostic(event: {
+    printerId: string;
+    serial: string;
+    ip?: string;
+    level: string;
+    message: string;
+  }): void {
+    const payload = { type: 'mqtt-diagnostic', ...event, timestamp: new Date().toISOString() };
+    for (const rest of this.restClients.values()) {
+      void rest.sendEvent(payload);
+    }
+  }
+
   getStatus(): { dev: boolean; prod: boolean } {
     return {
       dev: this.backends.get('dev')?.isReady() ?? false,
