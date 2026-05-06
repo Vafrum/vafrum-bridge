@@ -27,44 +27,31 @@ import {
 import { detectModelBySerial } from './bambu-serial-prefix';
 
 /**
- * Annotiert AMS-Units mit dem Düsen-Index (nozzle 0/1).
+ * Annotiert AMS-Units mit dem Düsen-Index (nozzle 0/1) aus dem
+ * `ams_extruder_map`-Feld das Bambu im AMS-Block sendet.
  *
- * Quelle: BambuStudio DevFilaSystem.cpp / Bambuddy:
- *   Bambu MQTT sendet pro AMS-Unit ein hex-string-kodiertes `info`-Feld
- *   (z.B. "10001003"). Bits 8-11 darin enthalten den extruder_id:
- *     0    = rechts (main / "Düse R" bzw. "Vortex" bei H2C)
- *     1    = links  (deputy / "Düse L")
- *     0xE  = uninitialized (skip)
+ * Format: Dictionary {amsId(string): nozzleIdx(number)}, z.B. {"0": 0, "1": 1}.
+ * Quelle: OpenBambuAPI / Bambuddy Community-Reverse-Engineering.
+ * Konvention bei H2D/H2C: 0 = rechts, 1 = links (Verifikation per Real-Daten).
  *
- *   extruder_id = (parseInt(info, 16) >> 8) & 0xF
- *
- * Single-Nozzle-Drucker liefern info nicht oder mit extruder_id=0,
- * was das Frontend bei isDualNozzle=false ohnehin ignoriert.
+ * Single-Nozzle-Drucker: Feld fehlt → nozzle bleibt undefined.
  */
 function annotateAmsWithNozzles(
   ams: AmsStatus | undefined,
   amsBlock: BambuAmsBlock | undefined,
 ): AmsStatus | undefined {
   if (!ams || !amsBlock || typeof amsBlock !== 'object') return ams;
-  const rawAms = (amsBlock as { ams?: unknown }).ams;
-  if (!Array.isArray(rawAms)) return ams;
-
+  const map = (amsBlock as { ams_extruder_map?: unknown }).ams_extruder_map;
+  if (!map || typeof map !== 'object') return ams;
   const amsToNozzle = new Map<number, number>();
-  for (const rawUnit of rawAms) {
-    if (!rawUnit || typeof rawUnit !== 'object') continue;
-    const u = rawUnit as { id?: unknown; info?: unknown };
-    const amsId = typeof u.id === 'number' ? u.id : (typeof u.id === 'string' ? parseInt(u.id, 10) : NaN);
-    if (!Number.isFinite(amsId)) continue;
-    const info = typeof u.info === 'string' ? u.info : null;
-    if (!info) continue;
-    const infoVal = parseInt(info, 16);
-    if (!Number.isFinite(infoVal)) continue;
-    const extruderId = (infoVal >> 8) & 0xF;
-    if (extruderId === 0xE) continue; // uninitialized
-    amsToNozzle.set(amsId, extruderId);
+  for (const [k, v] of Object.entries(map)) {
+    const amsId = parseInt(k, 10);
+    const nozzleIdx = typeof v === 'number' ? v : (typeof v === 'string' ? parseInt(v, 10) : NaN);
+    if (Number.isFinite(amsId) && Number.isFinite(nozzleIdx)) {
+      amsToNozzle.set(amsId, nozzleIdx);
+    }
   }
   if (amsToNozzle.size === 0) return ams;
-
   return {
     ...ams,
     units: (ams.units ?? []).map(u => ({
