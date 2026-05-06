@@ -25,30 +25,33 @@ import {
   mapPrintOnline,
 } from './bambu-event-mapper';
 import { detectModelBySerial } from './bambu-serial-prefix';
-import { decodeExtruderSnow } from './bambu-h2-device-decoder';
 
 /**
- * Annotiert AMS-Units mit dem Düsen-Index (nozzle 0/1) basierend auf
- * device.extruder.info[].snow. Reference §3.6 + Z. 1066-1068.
- * Snow-Encoding: amsId = snow >> 4, trayIdx = snow & 0xF.
+ * Annotiert AMS-Units mit dem Düsen-Index (nozzle 0/1) aus dem
+ * `ams_extruder_map`-Feld das Bambu im AMS-Block sendet.
  *
- * Wenn devicePayload kein extruder.info hat (Single-Nozzle-Drucker),
- * bleibt nozzle undefined und das Frontend behandelt das als "alle einer Düse".
+ * Format: Dictionary {amsId(string): nozzleIdx(number)}, z.B. {"0": 0, "1": 1}.
+ * Quelle: OpenBambuAPI / Bambuddy Community-Reverse-Engineering.
+ * Konvention bei H2D/H2C: 0 = rechts, 1 = links (Verifikation per Real-Daten).
+ *
+ * Single-Nozzle-Drucker: Feld fehlt → nozzle bleibt undefined.
  */
 function annotateAmsWithNozzles(
   ams: AmsStatus | undefined,
-  devicePayload: unknown,
+  amsBlock: BambuAmsBlock | undefined,
 ): AmsStatus | undefined {
-  if (!ams) return ams;
-  if (!devicePayload || typeof devicePayload !== 'object') return ams;
-  const d = devicePayload as { extruder?: { info?: unknown } };
-  const mappings = decodeExtruderSnow(d.extruder?.info);
-  if (mappings.length === 0) return ams;
-  // Map: amsId → nozzleIdx
+  if (!ams || !amsBlock || typeof amsBlock !== 'object') return ams;
+  const map = (amsBlock as { ams_extruder_map?: unknown }).ams_extruder_map;
+  if (!map || typeof map !== 'object') return ams;
   const amsToNozzle = new Map<number, number>();
-  for (const m of mappings) {
-    amsToNozzle.set(m.amsId, m.nozzleIdx);
+  for (const [k, v] of Object.entries(map)) {
+    const amsId = parseInt(k, 10);
+    const nozzleIdx = typeof v === 'number' ? v : (typeof v === 'string' ? parseInt(v, 10) : NaN);
+    if (Number.isFinite(amsId) && Number.isFinite(nozzleIdx)) {
+      amsToNozzle.set(amsId, nozzleIdx);
+    }
   }
+  if (amsToNozzle.size === 0) return ams;
   return {
     ...ams,
     units: (ams.units ?? []).map(u => ({
@@ -161,7 +164,7 @@ export function buildPrinterStatusFromBambuReport(
     workLight: lights.workLight,
     heatbedLight: lights.heatbedLight,
 
-    ams: annotateAmsWithNozzles(mapAmsBlock(block.ams), devicePayload),
+    ams: annotateAmsWithNozzles(mapAmsBlock(block.ams), block.ams),
     externalSpools: mapExternalSpools(block),
 
     printError: numOrUndef(block.print_error),
