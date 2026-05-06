@@ -80,6 +80,44 @@ export function decodeExtruderInfo(
 }
 
 // ============================================================================
+// AMS ↔ Düse-Zuordnung (H2D/H2C Snow-Encoding)
+// ============================================================================
+
+/**
+ * Reference §3.6 + Z. 1066-1068: device.extruder.info[].snow encoded
+ *   Low 4 Bits  = Tray-Index (0-3)
+ *   Restliche Bits = AMS-Index
+ *
+ * Pro Extruder (Düse) gibt's einen snow-Wert der den verbundenen AMS+Tray angibt.
+ * Damit ist die AMS↔Düse-Zuordnung deterministisch — KEINE Heuristik mehr nötig.
+ */
+export interface ExtruderAmsMapping {
+  nozzleIdx: number;   // 0=links, 1=rechts (H2D/H2C)
+  amsId: number;       // welcher AMS hängt an dieser Düse
+  trayIdx: number;     // welcher Slot in dem AMS aktiv ist (0-3)
+  rawSnow: number;
+}
+
+export function decodeExtruderSnow(extruderInfo: unknown): ExtruderAmsMapping[] {
+  if (!Array.isArray(extruderInfo)) return [];
+  const result: ExtruderAmsMapping[] = [];
+  for (const entry of extruderInfo) {
+    if (!entry || typeof entry !== 'object') continue;
+    const e = entry as { id?: unknown; snow?: unknown };
+    const nozzleIdx = typeof e.id === 'number' ? e.id : (typeof e.id === 'string' ? parseInt(e.id, 10) : NaN);
+    const snow = typeof e.snow === 'number' ? e.snow : (typeof e.snow === 'string' ? parseInt(e.snow, 10) : NaN);
+    if (!Number.isFinite(nozzleIdx) || !Number.isFinite(snow)) continue;
+    result.push({
+      nozzleIdx,
+      amsId: snow >> 4,
+      trayIdx: snow & 0xF,
+      rawSnow: snow,
+    });
+  }
+  return result;
+}
+
+// ============================================================================
 // Helpers
 // ============================================================================
 
