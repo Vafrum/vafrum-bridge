@@ -52,6 +52,10 @@ export interface AmsUnit {
   temp: number;
   humidity?: number;
   humidityIndex?: number;
+  /** Düsen-Index dieser AMS-Unit bei Dual-Nozzle (H2D/H2C): 0=links, 1=rechts.
+   *  Decodiert aus device.extruder.info[].snow (>> 4 = ams_id, & 0xF = tray_idx).
+   *  Reference §3.6 + Z. 1066-1068. */
+  nozzle?: number;
 }
 
 export interface AmsTray {
