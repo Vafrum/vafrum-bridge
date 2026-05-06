@@ -25,38 +25,6 @@ import {
   mapPrintOnline,
 } from './bambu-event-mapper';
 import { detectModelBySerial } from './bambu-serial-prefix';
-import { decodeExtruderSnow } from './bambu-h2-device-decoder';
-
-/**
- * Annotiert AMS-Units mit dem Düsen-Index (nozzle 0/1) basierend auf
- * device.extruder.info[].snow. Reference §3.6 + Z. 1066-1068.
- * Snow-Encoding: amsId = snow >> 4, trayIdx = snow & 0xF.
- *
- * Wenn devicePayload kein extruder.info hat (Single-Nozzle-Drucker),
- * bleibt nozzle undefined und das Frontend behandelt das als "alle einer Düse".
- */
-function annotateAmsWithNozzles(
-  ams: AmsStatus | undefined,
-  devicePayload: unknown,
-): AmsStatus | undefined {
-  if (!ams) return ams;
-  if (!devicePayload || typeof devicePayload !== 'object') return ams;
-  const d = devicePayload as { extruder?: { info?: unknown } };
-  const mappings = decodeExtruderSnow(d.extruder?.info);
-  if (mappings.length === 0) return ams;
-  // Map: amsId → nozzleIdx
-  const amsToNozzle = new Map<number, number>();
-  for (const m of mappings) {
-    amsToNozzle.set(m.amsId, m.nozzleIdx);
-  }
-  return {
-    ...ams,
-    units: (ams.units ?? []).map(u => ({
-      ...u,
-      nozzle: amsToNozzle.has(u.id) ? amsToNozzle.get(u.id) : u.nozzle,
-    })),
-  };
-}
 
 export interface BuildPrinterStatusContext {
   /** Optionaler Modellname falls aus DB schon bekannt — überschreibt Detection-Modell nicht direkt im PrinterStatus (kein Top-Level model-Feld), wird aber für mögliche modelClass/Family-Override genutzt wenn Detection unknown bleibt. */
@@ -161,7 +129,7 @@ export function buildPrinterStatusFromBambuReport(
     workLight: lights.workLight,
     heatbedLight: lights.heatbedLight,
 
-    ams: annotateAmsWithNozzles(mapAmsBlock(block.ams), devicePayload),
+    ams: mapAmsBlock(block.ams),
     externalSpools: mapExternalSpools(block),
 
     printError: numOrUndef(block.print_error),
@@ -348,10 +316,6 @@ function mapHmsRaw(
   }));
 }
 
-/**
- * Wandelt einen Bambu-Spool-Eintrag (vt_tray oder vir_slot[i]) in ExternalSpool.
- * Gibt null zurück wenn der Slot leer ist (tray_color all-zeros + tray_type leer).
- */
 function spoolFromBambuTray(raw: unknown): ExternalSpool | null {
   if (!raw || typeof raw !== 'object') return null;
   const slot = raw as Record<string, unknown>;
@@ -373,16 +337,12 @@ function spoolFromBambuTray(raw: unknown): ExternalSpool | null {
 }
 
 /**
- * Mappt externe Spulen für ALLE Bambu-Modelle:
- * - H-Familie (H2D/H2C/...): vir_slot[]-Array (id 254 links, 253 rechts)
- * - X1/P1/A1/P2S: vt_tray-Object (id 254, single external spool holder)
- * Beide Pfade können gleichzeitig vorhanden sein; alle nicht-leeren Spulen
- * werden zusammengeführt.
+ * Externe Spulen für ALLE Bambu-Modelle:
+ * - H-Familie: block.vir_slot[]  (id 254/253 = links/rechts)
+ * - X1/P1/A1/P2S: block.vt_tray oder block.ams.vt_tray (id 254)
  */
 function mapExternalSpools(block: BambuPrintBlock): ExternalSpool[] | undefined {
   const out: ExternalSpool[] = [];
-
-  // H-Familie: vir_slot[]
   const virSlots = (block as { vir_slot?: unknown }).vir_slot;
   if (Array.isArray(virSlots)) {
     for (const v of virSlots) {
@@ -390,14 +350,11 @@ function mapExternalSpools(block: BambuPrintBlock): ExternalSpool[] | undefined 
       if (sp) out.push(sp);
     }
   }
-
-  // X1/P1/A1/P2S: vt_tray (top-level oder unter ams)
   const vtTrayTop = (block as { vt_tray?: unknown }).vt_tray;
   const vtTrayAms = (block.ams as { vt_tray?: unknown } | undefined)?.vt_tray;
   for (const cand of [vtTrayTop, vtTrayAms]) {
     const sp = spoolFromBambuTray(cand);
     if (sp && !out.some(o => o.id === sp.id)) out.push(sp);
   }
-
   return out.length > 0 ? out : undefined;
 }
