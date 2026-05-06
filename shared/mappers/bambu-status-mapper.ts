@@ -130,7 +130,7 @@ export function buildPrinterStatusFromBambuReport(
     heatbedLight: lights.heatbedLight,
 
     ams: mapAmsBlock(block.ams),
-    externalSpools: mapVirSlots(block.vir_slot),
+    externalSpools: mapExternalSpools(block),
 
     printError: numOrUndef(block.print_error),
     printStage: numOrUndef(block.mc_print_stage),
@@ -316,33 +316,45 @@ function mapHmsRaw(
   }));
 }
 
+function spoolFromBambuTray(raw: unknown): ExternalSpool | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const slot = raw as Record<string, unknown>;
+  const color = typeof slot.tray_color === 'string' ? slot.tray_color : '';
+  const type = typeof slot.tray_type === 'string' ? slot.tray_type : '';
+  if ((!color || /^0+$/.test(color)) && !type) return null;
+  return {
+    id: parseIntOrUndef(slot.id),
+    type,
+    color,
+    name: typeof slot.tray_id_name === 'string' ? slot.tray_id_name : '',
+    remain: typeof slot.remain === 'number' ? slot.remain : numOrZero(slot.remain),
+    k: typeof slot.k === 'number' ? slot.k : numOrZero(slot.k),
+    nozzleTempMin: parseIntOrUndef(slot.nozzle_temp_min),
+    nozzleTempMax: parseIntOrUndef(slot.nozzle_temp_max),
+    trayInfoIdx: typeof slot.tray_info_idx === 'string' ? slot.tray_info_idx : undefined,
+    tagUid: typeof slot.tag_uid === 'string' ? slot.tag_uid : undefined,
+  };
+}
+
 /**
- * Mappt H-Familie vir_slot[] auf ExternalSpool[].
- * vir_slot.id 254 = linke Düse, 253 = rechte Düse (H2D Dual-Nozzle).
- * Leere Spulen (tray_color all-zeros, tray_type leer) werden ignoriert.
+ * Externe Spulen für ALLE Bambu-Modelle:
+ * - H-Familie: block.vir_slot[]  (id 254/253 = links/rechts)
+ * - X1/P1/A1/P2S: block.vt_tray oder block.ams.vt_tray (id 254)
  */
-function mapVirSlots(virSlots: unknown): ExternalSpool[] | undefined {
-  if (!Array.isArray(virSlots) || virSlots.length === 0) return undefined;
+function mapExternalSpools(block: BambuPrintBlock): ExternalSpool[] | undefined {
   const out: ExternalSpool[] = [];
-  for (const v of virSlots) {
-    if (!v || typeof v !== 'object') continue;
-    const slot = v as Record<string, unknown>;
-    const color = typeof slot.tray_color === 'string' ? slot.tray_color : '';
-    const type = typeof slot.tray_type === 'string' ? slot.tray_type : '';
-    if ((!color || /^0+$/.test(color)) && !type) continue;
-    const idNum = parseIntOrUndef(slot.id);
-    out.push({
-      id: idNum,
-      type,
-      color,
-      name: typeof slot.tray_id_name === 'string' ? slot.tray_id_name : '',
-      remain: typeof slot.remain === 'number' ? slot.remain : numOrZero(slot.remain),
-      k: typeof slot.k === 'number' ? slot.k : numOrZero(slot.k),
-      nozzleTempMin: parseIntOrUndef(slot.nozzle_temp_min),
-      nozzleTempMax: parseIntOrUndef(slot.nozzle_temp_max),
-      trayInfoIdx: typeof slot.tray_info_idx === 'string' ? slot.tray_info_idx : undefined,
-      tagUid: typeof slot.tag_uid === 'string' ? slot.tag_uid : undefined,
-    });
+  const virSlots = (block as { vir_slot?: unknown }).vir_slot;
+  if (Array.isArray(virSlots)) {
+    for (const v of virSlots) {
+      const sp = spoolFromBambuTray(v);
+      if (sp) out.push(sp);
+    }
+  }
+  const vtTrayTop = (block as { vt_tray?: unknown }).vt_tray;
+  const vtTrayAms = (block.ams as { vt_tray?: unknown } | undefined)?.vt_tray;
+  for (const cand of [vtTrayTop, vtTrayAms]) {
+    const sp = spoolFromBambuTray(cand);
+    if (sp && !out.some(o => o.id === sp.id)) out.push(sp);
   }
   return out.length > 0 ? out : undefined;
 }
