@@ -12,7 +12,7 @@
  * H2-Multi-Extruder via devicePayload, AMS, HMS, modelClass/Family).
  */
 
-import type { PrinterStatus, AmsStatus, AmsUnit, AmsTray, HmsEntry } from '../interfaces/printer-status';
+import type { PrinterStatus, AmsStatus, AmsUnit, AmsTray, HmsEntry, ExternalSpool } from '../interfaces/printer-status';
 import type { BambuPrintBlock, BambuAmsBlock } from './bambu-event-mapper';
 import {
   mapHomeFlag,
@@ -130,6 +130,7 @@ export function buildPrinterStatusFromBambuReport(
     heatbedLight: lights.heatbedLight,
 
     ams: mapAmsBlock(block.ams),
+    externalSpools: mapVirSlots(block.vir_slot),
 
     printError: numOrUndef(block.print_error),
     printStage: numOrUndef(block.mc_print_stage),
@@ -313,4 +314,35 @@ function mapHmsRaw(
     action: e.action,
     timestamp: typeof e.timestamp === 'number' ? new Date(e.timestamp).toISOString() : undefined,
   }));
+}
+
+/**
+ * Mappt H-Familie vir_slot[] auf ExternalSpool[].
+ * vir_slot.id 254 = linke Düse, 253 = rechte Düse (H2D Dual-Nozzle).
+ * Leere Spulen (tray_color all-zeros, tray_type leer) werden ignoriert.
+ */
+function mapVirSlots(virSlots: unknown): ExternalSpool[] | undefined {
+  if (!Array.isArray(virSlots) || virSlots.length === 0) return undefined;
+  const out: ExternalSpool[] = [];
+  for (const v of virSlots) {
+    if (!v || typeof v !== 'object') continue;
+    const slot = v as Record<string, unknown>;
+    const color = typeof slot.tray_color === 'string' ? slot.tray_color : '';
+    const type = typeof slot.tray_type === 'string' ? slot.tray_type : '';
+    if ((!color || /^0+$/.test(color)) && !type) continue;
+    const idNum = parseIntOrUndef(slot.id);
+    out.push({
+      id: idNum,
+      type,
+      color,
+      name: typeof slot.tray_id_name === 'string' ? slot.tray_id_name : '',
+      remain: typeof slot.remain === 'number' ? slot.remain : numOrZero(slot.remain),
+      k: typeof slot.k === 'number' ? slot.k : numOrZero(slot.k),
+      nozzleTempMin: parseIntOrUndef(slot.nozzle_temp_min),
+      nozzleTempMax: parseIntOrUndef(slot.nozzle_temp_max),
+      trayInfoIdx: typeof slot.tray_info_idx === 'string' ? slot.tray_info_idx : undefined,
+      tagUid: typeof slot.tag_uid === 'string' ? slot.tag_uid : undefined,
+    });
+  }
+  return out.length > 0 ? out : undefined;
 }
