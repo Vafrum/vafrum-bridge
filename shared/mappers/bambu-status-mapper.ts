@@ -45,33 +45,44 @@ function annotateAmsWithNozzles(
   ams: AmsStatus | undefined,
   amsBlock: BambuAmsBlock | undefined,
 ): AmsStatus | undefined {
-  if (!ams || !amsBlock || typeof amsBlock !== 'object') return ams;
-  const rawAms = (amsBlock as { ams?: unknown }).ams;
-  if (!Array.isArray(rawAms)) return ams;
+  // Defensiv mit try/catch: wenn ein unerwartetes Format reinkommt soll die Bridge
+  // NICHT crashen — wir geben dann das ams unverändert zurück und die UI fällt
+  // auf "alle auf einer Düse" zurück.
+  try {
+    if (!ams || !amsBlock || typeof amsBlock !== 'object') return ams;
+    const rawAms = (amsBlock as { ams?: unknown }).ams;
+    if (!Array.isArray(rawAms)) return ams;
 
-  const amsToNozzle = new Map<number, number>();
-  for (const rawUnit of rawAms) {
-    if (!rawUnit || typeof rawUnit !== 'object') continue;
-    const u = rawUnit as { id?: unknown; info?: unknown };
-    const amsId = typeof u.id === 'number' ? u.id : (typeof u.id === 'string' ? parseInt(u.id, 10) : NaN);
-    if (!Number.isFinite(amsId)) continue;
-    const info = typeof u.info === 'string' ? u.info : null;
-    if (!info) continue;
-    const infoVal = parseInt(info, 16);
-    if (!Number.isFinite(infoVal)) continue;
-    const extruderId = (infoVal >> 8) & 0xF;
-    if (extruderId === 0xE) continue; // uninitialized
-    amsToNozzle.set(amsId, extruderId);
+    const amsToNozzle = new Map<number, number>();
+    for (const rawUnit of rawAms) {
+      if (!rawUnit || typeof rawUnit !== 'object') continue;
+      const u = rawUnit as { id?: unknown; info?: unknown };
+      const amsId = typeof u.id === 'number' ? u.id : (typeof u.id === 'string' ? parseInt(u.id, 10) : NaN);
+      if (!Number.isFinite(amsId)) continue;
+      const info = typeof u.info === 'string' ? u.info : null;
+      if (!info) continue;
+      const infoVal = parseInt(info, 16);
+      if (!Number.isFinite(infoVal)) continue;
+      const extruderId = (infoVal >> 8) & 0xF;
+      if (extruderId === 0xE) continue; // uninitialized
+      amsToNozzle.set(amsId, extruderId);
+    }
+    if (amsToNozzle.size === 0) return ams;
+
+    return {
+      ...ams,
+      units: (ams.units ?? []).map(u => ({
+        ...u,
+        nozzle: amsToNozzle.has(u.id) ? amsToNozzle.get(u.id) : u.nozzle,
+      })),
+    };
+  } catch (err) {
+    // Niemals werfen — Mapper darf Bridge nicht crashen.
+    if (typeof console !== 'undefined' && console.warn) {
+      console.warn('[annotateAmsWithNozzles] decode failed, returning original ams:', err);
+    }
+    return ams;
   }
-  if (amsToNozzle.size === 0) return ams;
-
-  return {
-    ...ams,
-    units: (ams.units ?? []).map(u => ({
-      ...u,
-      nozzle: amsToNozzle.has(u.id) ? amsToNozzle.get(u.id) : u.nozzle,
-    })),
-  };
 }
 
 export interface BuildPrinterStatusContext {
