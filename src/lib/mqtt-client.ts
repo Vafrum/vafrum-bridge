@@ -36,6 +36,14 @@ interface RustEvent {
 
 export class PrinterEngine {
   private prevByPrinter = new Map<string, PrinterStatus>();
+  /**
+   * Stateful Cache pro Drucker: ams_id (string) → letztes info-Hex-String.
+   * Bambu sendet `ams.ams[i].info` nur im pushall (nicht in deltas) — der Cache
+   * sorgt dafuer dass die AMS↔Düsen-Zuordnung über alle Updates hinweg erhalten bleibt.
+   * Analog zu Bambuddy state.ams_extruder_map. Kein Workaround — siehe
+   * https://github.com/maziggy/bambuddy/blob/main/backend/app/services/bambu_mqtt.py
+   */
+  private amsInfoByPrinter = new Map<string, Map<string, string>>();
   private unlisten: UnlistenFn | null = null;
   private unlistenDiag: UnlistenFn | null = null;
 
@@ -77,6 +85,7 @@ export class PrinterEngine {
   async removePrinter(printerId: string): Promise<void> {
     await invoke('bridge_remove_printer', { printerId });
     this.prevByPrinter.delete(printerId);
+    this.amsInfoByPrinter.delete(printerId);
   }
 
   async sendCommand(
@@ -109,6 +118,34 @@ export class PrinterEngine {
 
       const prev = this.prevByPrinter.get(payload.printerId);
       const devicePayload = raw?.print?.device ?? raw?.device;
+
+      // === Stateful AMS-info-Cache ===
+      // info-Feld pro ams[i] in den merged-Block einsetzen wenn aktuell fehlt
+      // (Delta-Updates dropen es haeufig). Cache pro Drucker, nie über Drucker hinweg.
+      try {
+        const amsBlock = (merged as any)?.ams;
+        const amsArr = Array.isArray(amsBlock?.ams) ? amsBlock.ams : null;
+        if (amsArr) {
+          let cache = this.amsInfoByPrinter.get(payload.printerId);
+          if (!cache) {
+            cache = new Map<string, string>();
+            this.amsInfoByPrinter.set(payload.printerId, cache);
+          }
+          for (const u of amsArr) {
+            if (!u || typeof u !== 'object') continue;
+            const id = u.id != null ? String(u.id) : null;
+            if (!id) continue;
+            if (typeof u.info === 'string' && u.info.length > 0) {
+              cache.set(id, u.info);
+            } else {
+              const cached = cache.get(id);
+              if (cached) u.info = cached;
+            }
+          }
+        }
+      } catch {
+        // Cache-Update darf Mapper nicht crashen
+      }
 
       let status = buildPrinterStatusFromBambuReport(
         payload.serial,
