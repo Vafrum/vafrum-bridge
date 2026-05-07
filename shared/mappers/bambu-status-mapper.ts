@@ -41,6 +41,19 @@ import { detectModelBySerial } from './bambu-serial-prefix';
  * Single-Nozzle-Drucker liefern info nicht oder mit extruder_id=0,
  * was das Frontend bei isDualNozzle=false ohnehin ignoriert.
  */
+/**
+ * Mapping Bambu-Konvention → Vafrum-Frontend-Konvention:
+ *   Bambu MAIN_EXTRUDER_ID  = 0 (rechts/main)   → Vafrum nozzleIdx 1 (Rechts/Vortex)
+ *   Bambu DEPUTY_EXTRUDER_ID= 1 (links/deputy)  → Vafrum nozzleIdx 0 (Links/Düse L)
+ * Quelle BambuStudio DevDefs.h: MAIN_EXTRUDER_ID=0, DEPUTY_EXTRUDER_ID=1.
+ * Quelle Vafrum PrinterDetailView Z. 917-924: renderNozzleSide('Links', 0, ...) / ('Vortex', 1, ...).
+ */
+function bambuExtruderToVafrumNozzle(bambuExtruderId: number): number | undefined {
+  if (bambuExtruderId === 0) return 1;
+  if (bambuExtruderId === 1) return 0;
+  return undefined;
+}
+
 function annotateAmsWithNozzles(
   ams: AmsStatus | undefined,
   amsBlock: BambuAmsBlock | undefined,
@@ -53,7 +66,7 @@ function annotateAmsWithNozzles(
     const rawAms = (amsBlock as { ams?: unknown }).ams;
     if (!Array.isArray(rawAms)) return ams;
 
-    const amsToNozzle = new Map<number, number>();
+    const amsToVafrumNozzle = new Map<number, number>();
     for (const rawUnit of rawAms) {
       if (!rawUnit || typeof rawUnit !== 'object') continue;
       const u = rawUnit as { id?: unknown; info?: unknown };
@@ -63,17 +76,20 @@ function annotateAmsWithNozzles(
       if (!info) continue;
       const infoVal = parseInt(info, 16);
       if (!Number.isFinite(infoVal)) continue;
-      const extruderId = (infoVal >> 8) & 0xF;
-      if (extruderId === 0xE) continue; // uninitialized
-      amsToNozzle.set(amsId, extruderId);
+      // BambuStudio DevFilaSystem.cpp: get_flag_bits(info, 8, 4) — bits 8-11 = extruder_id
+      const bambuExtruderId = (infoVal >> 8) & 0xF;
+      if (bambuExtruderId === 0xE) continue; // uninitialized — skip (BambuStudio Z. 587/598)
+      const vafrumNozzle = bambuExtruderToVafrumNozzle(bambuExtruderId);
+      if (vafrumNozzle === undefined) continue;
+      amsToVafrumNozzle.set(amsId, vafrumNozzle);
     }
-    if (amsToNozzle.size === 0) return ams;
+    if (amsToVafrumNozzle.size === 0) return ams;
 
     return {
       ...ams,
       units: (ams.units ?? []).map(u => ({
         ...u,
-        nozzle: amsToNozzle.has(u.id) ? amsToNozzle.get(u.id) : u.nozzle,
+        nozzle: amsToVafrumNozzle.has(u.id) ? amsToVafrumNozzle.get(u.id) : u.nozzle,
       })),
     };
   } catch (err) {
